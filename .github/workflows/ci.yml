@@ -1,0 +1,46 @@
+name: Automation
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: automation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Install
+        run: |
+          python -m pip install -r requirements-service.txt
+      - name: Execute real application scenarios
+        run: python scripts/run.py --local-api -- mvn -B verify
+      - name: Preserve native reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automation-evidence
+          path: |
+            reports/
+            package-lock.json
+            results/
+            test-results/
+            playwright-report/
+            testscript-results/
+            target/surefire-reports/
+            target/site/
+            target/karate-reports/
+          if-no-files-found: warn
+          retention-days: 7
